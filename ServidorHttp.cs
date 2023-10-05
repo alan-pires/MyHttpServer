@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using System.Text;
+using System.Web;
 
 class ServidorHttp
 {
@@ -59,18 +60,37 @@ class ServidorHttp
                 string metodoHttp = linhas[0].Substring(0, iPrimeiroEspaco);
                 string recursoBuscado = linhas[0].Substring(iPrimeiroEspaco + 1, iSegundoEspaco - iPrimeiroEspaco - 1);
                 if (recursoBuscado == "/") recursoBuscado = "/index.html";
+                string textParam = recursoBuscado.Contains("?") ? recursoBuscado.Split("?")[1] : "";
+                SortedList<string, string> parametros = ProcessParams(textParam);
+
+                string dadosPost = textRequest.Contains("\r\n\r\n") ? textRequest.Split("\r\n\r\n")[1] : "";
+                if (!string.IsNullOrEmpty(dadosPost))
+                {
+                    dadosPost = HttpUtility.UrlDecode(dadosPost, Encoding.UTF8);
+                    var parametrosPost = ProcessParams(dadosPost);
+                    foreach (var pp in parametrosPost)
+                        parametros.Add(pp.Key, pp.Value);
+                }
+
+                recursoBuscado = recursoBuscado.Split("?")[0];
                 string versaoHttp = linhas[0].Substring(iSegundoEspaco + 1);
                 iPrimeiroEspaco = linhas[1].IndexOf(' ');
                 string nomeHost = linhas[1].Substring(iPrimeiroEspaco + 1);
+                
                 byte[] bytesHeader = null;
                 byte[] bytesContent = null;
-                FileInfo fiFile = new FileInfo(getFilePath(nomeHost, recursoBuscado));
-                if (fiFile.Exists)
+                FileInfo file = new FileInfo(getFilePath(nomeHost, recursoBuscado));
+                if (file.Exists)
                 {
-                    if (MimeTypes.ContainsKey(fiFile.Extension.ToLower()))
+                    if (MimeTypes.ContainsKey(file.Extension.ToLower()))
                     {
-                        bytesContent = File.ReadAllBytes(fiFile.FullName);
-                        string mimeType = MimeTypes[fiFile.Extension.ToLower()];
+                        // bytesContent = File.ReadAllBytes(file.FullName);
+                        if (file.Extension.ToLower() == ".dhtml")
+                            bytesContent = GenerateDynamicHTML(file.FullName, parametros, metodoHttp);
+                        else
+                            bytesContent = File.ReadAllBytes(file.FullName);
+
+                        string mimeType = MimeTypes[file.Extension.ToLower()];
                         bytesHeader = GenerateHeader(versaoHttp, mimeType, "200", bytesContent.Length); // headers that will be sent to client in response to request
                     }
                     else
@@ -117,7 +137,6 @@ class ServidorHttp
     private void PopulateMimeTypes()
     {
         this.MimeTypes = new SortedList<string, string>();
-        this.MimeTypes.Add("", "");
         this.MimeTypes.Add(".html", "text/html;charset=utf-8");
         this.MimeTypes.Add(".htm", "text/html;charset=utf-8");
         this.MimeTypes.Add(".css", "text/css");
@@ -138,6 +157,7 @@ class ServidorHttp
         this.DirectoryHosts = new SortedList<string, string>();
         this.DirectoryHosts.Add("localhost", "C:\\Users\\Alan_\\Desktop\\all\\MyServer\\www\\localhost");
         this.DirectoryHosts.Add("outrosite", "C:\\Users\\Alan_\\Desktop\\all\\MyServer\\www\\outrosite");
+        // this.DirectoryHosts.Add("quitandaonline.com.br", "E:\\Youtube\\QuitandaOnline");
     }
     public string getFilePath(string host, string fileName)
     {
@@ -145,5 +165,39 @@ class ServidorHttp
         string filePath = directory + fileName.Replace("/","\\");
         return filePath;
     }
-}
 
+    public byte[] GenerateDynamicHTML(string filePath, SortedList<string, string> parametros, string metodoHttp)
+    {
+        FileInfo fi = new FileInfo(filePath);
+
+        string classPageName = "Pagina" + fi.Name.Replace(fi.Extension, "");
+        Type tipoPaginaDinamica = Type.GetType(classPageName, true, true);
+        PaginaDinamica pd = Activator.CreateInstance(tipoPaginaDinamica) as PaginaDinamica;
+        pd.HtmlModelo = File.ReadAllText(filePath);
+
+        switch (metodoHttp.ToLower())
+        {
+            case "get":
+                return pd.Get(parametros);
+            case "post":
+                return pd.Post(parametros);
+            default:
+                return new byte[0];
+        }
+    }
+    private SortedList<string, string> ProcessParams(string textParam)
+    {
+        SortedList<string, string> paramList = new SortedList<string, string>();
+
+        if (!string.IsNullOrEmpty(textParam.Trim()))
+        {
+            string[] parsKeyValues = textParam.Split("&");
+            foreach(var par in parsKeyValues)
+            {
+                paramList.Add(par.Split("=")[0].ToLower(), par.Split("=")[1]);
+            }
+        }
+
+        return paramList;
+    }
+}

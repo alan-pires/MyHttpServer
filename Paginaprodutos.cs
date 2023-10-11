@@ -8,22 +8,28 @@ class Paginaprodutos : PaginaDinamica
 
         string codigo = parametros.ContainsKey("id") ? parametros["id"] : "";
 
-        foreach(var p in Produto.Listagem)
+        if (!string.IsNullOrEmpty(codigo))
         {
-            bool negrito = (!string.IsNullOrEmpty(codigo) && codigo == p.Codigo.ToString());
-
-            htmlGerado.Append("<tr>");
-            if (negrito)
+            foreach(var p in Produto.Listagem)
             {
+                if (p.Codigo == Convert.ToInt32(parametros["id"]))
+                {
+                    htmlGerado.Append("<tr>");
+                    htmlGerado.Append($"<td><b>{p.Codigo}</b></td>");
+                    htmlGerado.Append($"<td><b>{p.Nome}</b></td>");
+                    htmlGerado.Append("</tr>");
+                }
+            }
+        }
+        else
+        {
+            foreach(var p in Produto.Listagem)
+            {
+                htmlGerado.Append("<tr>");
                 htmlGerado.Append($"<td><b>{p.Codigo}</b></td>");
                 htmlGerado.Append($"<td><b>{p.Nome}</b></td>");
+                htmlGerado.Append("</tr>");
             }
-            else
-            {
-                htmlGerado.Append($"<td>{p.Codigo}</td>");
-                htmlGerado.Append($"<td>{p.Nome}</td>");
-            }
-            htmlGerado.Append("</tr>");
         }
 
         string textoHtmlGerado = this.HtmlModelo.Replace("{{HtmlGerado}}", htmlGerado.ToString());

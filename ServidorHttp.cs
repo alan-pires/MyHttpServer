@@ -49,8 +49,10 @@ class ServidorHttp
         if (conexao.Connected)
         {
             byte[] bytesRequest = new byte[1024];
+
             conexao.Receive(bytesRequest, bytesRequest.Length, 0);
             string textRequest = Encoding.UTF8.GetString(bytesRequest).Replace((char)0, ' ').Trim();
+
             if (textRequest.Length > 0)
             {
                 Console.WriteLine($"\n{textRequest}\n");
@@ -59,6 +61,7 @@ class ServidorHttp
                 int iSegundoEspaco = linhas[0].LastIndexOf(' ');
                 string metodoHttp = linhas[0].Substring(0, iPrimeiroEspaco);
                 string recursoBuscado = linhas[0].Substring(iPrimeiroEspaco + 1, iSegundoEspaco - iPrimeiroEspaco - 1);
+
                 if (recursoBuscado == "/") recursoBuscado = "/index.html";
                 string textParam = recursoBuscado.Contains("?") ? recursoBuscado.Split("?")[1] : "";
                 SortedList<string, string> parametros = ProcessParams(textParam);

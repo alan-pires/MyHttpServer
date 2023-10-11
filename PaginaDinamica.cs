@@ -13,5 +13,4 @@ abstract public class PaginaDinamica
     {
         return Encoding.UTF8.GetBytes(this.HtmlModelo);
     }
-
 }
